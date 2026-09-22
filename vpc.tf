@@ -1,5 +1,5 @@
 resource "aws_vpc" "kafka-vpc" {
-  cidr_block       = "10.0.0.0/16"
+  cidr_block       = var.vpc_cidr
   instance_tenancy = "default"
 
   tags = {
@@ -16,13 +16,13 @@ resource "aws_internet_gateway" "kafka-igw" {
 }
 
 resource "aws_subnet" "kafka-subnet" {
-  count = length(var.availability_zones)
+  count      = length(var.availability_zones)
   vpc_id     = aws_vpc.kafka-vpc.id
-  cidr_block = "10.0.1.0/24"
+  cidr_block = local.subneet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name = "kafka-subnet-${count.index + 1}"
+    Name = "kafka-subnet-${count.index}"
   }
 }
 

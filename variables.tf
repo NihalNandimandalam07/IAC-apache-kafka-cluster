@@ -23,5 +23,17 @@ variable "key_name" {
     default = null
 }
 
+variable "root_volume_size" {
+    type = number
+    default = 20
+}
 
+variable "kafka_version" {
+    type = string
+    default = "3.9.0"
+}
 
+variable "var.ssh_cidr" {
+    type = string
+    # default = ""
+}

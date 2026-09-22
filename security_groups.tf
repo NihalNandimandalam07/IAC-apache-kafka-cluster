@@ -16,13 +16,13 @@ resource "aws_security_group" "kafka-sg" {
     self = true
   }
 
-/* ingress {
+  ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [""]
+    cidr_blocks = var.ssh_cidr
     self = true
-  } */
+  } 
 
   egress {
     from_port   = 0
