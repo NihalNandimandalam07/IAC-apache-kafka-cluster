@@ -1,6 +1,13 @@
+locals{
+    effective_client_cidrs = 
+        length(var.client_access_cidrs) > 0 ? var.client_cidrs : [var.vpc_cidr]
+}
+
 resource "aws_security_group" "kafka-sg" {
     name_prefix        = "kafka-"
     vpc_id = aws_vpc.kafka-vpc.id
+
+    depends_on = [aws_vpc.kafka-vpc]
 
   ingress {
     from_port   = 9092
@@ -17,12 +24,11 @@ resource "aws_security_group" "kafka-sg" {
   }
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = 9092
+    to_port     = 9092
     protocol    = "tcp"
-    cidr_blocks = var.ssh_cidr
-    self = true
-  } 
+    cidr_blocks = local.effective_client_cidrs
+  }
 
   egress {
     from_port   = 0

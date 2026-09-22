@@ -17,6 +17,10 @@ variable "broker_count" {
     type = number
     default = 3
 }
+variable "instance_type" {
+    type = string
+    default = "t3.medium"
+}
 
 variable "key_name" {
     type = string
@@ -33,7 +37,7 @@ variable "kafka_version" {
     default = "3.9.0"
 }
 
-variable "var.ssh_cidr" {
-    type = string
-    # default = ""
+variable "client_access_cidrs" {
+    type = list(string)
+    default = []
 }
