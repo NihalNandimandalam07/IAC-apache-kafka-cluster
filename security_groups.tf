@@ -1,6 +1,5 @@
 locals{
-    effective_client_cidrs = 
-        length(var.client_access_cidrs) > 0 ? var.client_cidrs : [var.vpc_cidr]
+    effective_client_cidrs = length(var.client_access_cidrs) > 0 ? var.client_cidrs : [var.vpc_cidr]
 }
 
 resource "aws_security_group" "kafka-sg" {
