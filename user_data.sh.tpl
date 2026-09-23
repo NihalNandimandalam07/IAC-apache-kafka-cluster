@@ -8,7 +8,7 @@ wget -q "https://downloads.apache.org/kafka/${kafka_version}/kafka_2.13-${kafka_
 mkdir -p /opt/kafka
 tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
 
-# Data directory (uses root volume — skip the separate EBS volume/mount entirely)
+# Data directory (uses root volume)
 mkdir -p /data/kafka-logs
 
 # KRaft config: this node is both broker and controller
