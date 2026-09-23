@@ -1,0 +1,364 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  effective_client_cidrs:
+    Type: String
+    Default: 10.0.0.0/16
+
+  kafka_version:
+    Type: String
+    Default: 3.9.0
+
+Resources:
+  kafkaVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: kafka-vpc
+  
+
+  kafkaIgw:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: kafkaVpc
+    Properties:
+      Tags:
+        - Key: Name
+          Value: kafka-internet-gateway
+
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref kafkaVpc
+      InternetGatewayId: !Ref kafkaIgw
+
+
+  KafkaSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      VpcId: !Ref kafkaVpc
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: kafka-subnet-1 
+
+
+  KafkaSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      VpcId: !Ref kafkaVpc
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: kafka-subnet-2 
+
+
+  KafkaSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      VpcId: !Ref kafkaVpc
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: kafka-subnet-3 
+  
+
+  kafkaRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref kafkaVpc
+      Tags:
+        - Key: Name
+          Value: kafka-route-table
+  
+
+  kafkaRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref kafkaRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref kafkaIgw
+  
+  
+  Subnet1AssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref KafkaSubnet1
+      RouteTableId: !Ref kafkaRouteTable
+
+  Subnet2AssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref KafkaSubnet2
+      RouteTableId: !Ref kafkaRouteTable
+
+  Subnet3AssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref KafkaSubnet3
+      RouteTableId: !Ref kafkaRouteTable
+
+
+  
+  KafkaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref kafkaVpc
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: kafka-security-group
+  
+  IngressClientSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref KafkaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 9092
+      ToPort: 9092
+  
+  IngressControllerSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref KafkaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 9093
+      ToPort: 9093
+  
+  IngressClientExternal:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref KafkaSecurityGroup
+      CidrIp: !Ref effective_client_cidrs
+      IpProtocol: tcp
+      FromPort: 9093
+      ToPort: 9093
+
+  kafkaIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+          managedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+  
+  kafkaInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref kafkaIAMRole
+
+  
+  ec2Instance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0c55b159cbfafe1f0
+      subnetId: !Ref KafkaSubnet1
+      SecurityGroupIds:
+        - !Ref KafkaSecurityGroup
+      IamInstanceProfile: !Ref kafkaInstanceProfile
+      blockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: kafka-instance-1
+      userData:
+        Fn::Base64: !Sub |         
+        #!/bin/bash
+        set -e
+
+        dnf install -y java-17-amazon-corretto-headless wget tar
+
+        # Install Kafka
+        wget -q "https://downloads.apache.org/kafka/${kafka_version}/kafka_2.13-${kafka_version}.tgz" -O /tmp/kafka.tgz
+        mkdir -p /opt/kafka
+        tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
+
+        # Data directory (uses root volume)
+        mkdir -p /data/kafka-logs
+
+        # KRaft config: this node is both broker and controller
+        cat > /opt/kafka/config/kraft/server.properties <<EOF
+        process.roles=broker,controller
+        node.id=${broker_id}
+        controller.quorum.voters=${controller_quorum_voters}
+        listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+        advertised.listeners=PLAINTEXT://${broker_ip}:9092
+        controller.listener.names=CONTROLLER
+        listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+        log.dirs=/data/kafka-logs
+        default.replication.factor=3
+        min.insync.replicas=2
+        offsets.topic.replication.factor=3
+        EOF
+
+        # Format storage and start Kafka
+        /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+
+        cat > /etc/systemd/system/kafka.service <<EOF
+        [Unit]
+        Description=Kafka
+        After=network.target
+
+        [Service]
+        ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+        Restart=on-failure
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+
+        systemctl enable --now kafka
+
+  
+  ec2Instance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0c55b159cbfafe1f0
+      subnetId: !Ref KafkaSubnet2
+      SecurityGroupIds:
+        - !Ref KafkaSecurityGroup
+      IamInstanceProfile: !Ref kafkaInstanceProfile
+      blockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: kafka-instance-2
+      userData:
+        Fn::Base64: !Sub |         
+        #!/bin/bash
+        set -e
+
+        dnf install -y java-17-amazon-corretto-headless wget tar
+
+        # Install Kafka
+        wget -q "https://downloads.apache.org/kafka/${kafka_version}/kafka_2.13-${kafka_version}.tgz" -O /tmp/kafka.tgz
+        mkdir -p /opt/kafka
+        tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
+
+        # Data directory (uses root volume)
+        mkdir -p /data/kafka-logs
+
+        # KRaft config: this node is both broker and controller
+        cat > /opt/kafka/config/kraft/server.properties <<EOF
+        process.roles=broker,controller
+        node.id=${broker_id}
+        controller.quorum.voters=${controller_quorum_voters}
+        listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+        advertised.listeners=PLAINTEXT://${broker_ip}:9092
+        controller.listener.names=CONTROLLER
+        listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+        log.dirs=/data/kafka-logs
+        default.replication.factor=3
+        min.insync.replicas=2
+        offsets.topic.replication.factor=3
+        EOF
+
+        # Format storage and start Kafka
+        /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+
+        cat > /etc/systemd/system/kafka.service <<EOF
+        [Unit]
+        Description=Kafka
+        After=network.target
+
+        [Service]
+        ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+        Restart=on-failure
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+
+        systemctl enable --now kafka
+
+  ec2Instance3:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0c55b159cbfafe1f0
+      subnetId: !Ref KafkaSubnet3
+      SecurityGroupIds:
+        - !Ref KafkaSecurityGroup
+      IamInstanceProfile: !Ref kafkaInstanceProfile
+      blockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+      Tags:
+        - Key: Name
+          Value: kafka-instance-3
+      userData:
+        Fn::Base64: !Sub |         
+        #!/bin/bash
+        set -e
+
+        dnf install -y java-17-amazon-corretto-headless wget tar
+
+        # Install Kafka
+        wget -q "https://downloads.apache.org/kafka/${kafka_version}/kafka_2.13-${kafka_version}.tgz" -O /tmp/kafka.tgz
+        mkdir -p /opt/kafka
+        tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
+
+        # Data directory (uses root volume)
+        mkdir -p /data/kafka-logs
+
+        # KRaft config: this node is both broker and controller
+        cat > /opt/kafka/config/kraft/server.properties <<EOF
+        process.roles=broker,controller
+        node.id=${broker_id}
+        controller.quorum.voters=${controller_quorum_voters}
+        listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+        advertised.listeners=PLAINTEXT://${broker_ip}:9092
+        controller.listener.names=CONTROLLER
+        listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+        log.dirs=/data/kafka-logs
+        default.replication.factor=3
+        min.insync.replicas=2
+        offsets.topic.replication.factor=3
+        EOF
+
+        # Format storage and start Kafka
+        /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+
+        cat > /etc/systemd/system/kafka.service <<EOF
+        [Unit]
+        Description=Kafka
+        After=network.target
+
+        [Service]
+        ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+        Restart=on-failure
+
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+
+        systemctl enable --now kafka
