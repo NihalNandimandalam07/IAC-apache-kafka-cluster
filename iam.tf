@@ -16,12 +16,12 @@ resource "aws_iam_role" "kafka_role" {
 
 }
 
-/*resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
+resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
   role       = aws_iam_role.kafka_role.name
-  policy_arn = "arn:aws:iam::policy/AmazonSSMManagedInstanceCore"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 } 
 
 resource "aws_iam_instance_profile" "kafka_instance_profile" {
   name_prefix = "kafka-"
   role        = aws_iam_role.kafka_role.name
-} */
+}
