@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 
 Parameters:
+  KeyName:
+    Type: String
+    Default: ""
+
   effective_client_cidrs:
     Type: String
     Default: 10.0.0.0/16
@@ -8,6 +12,9 @@ Parameters:
   kafka_version:
     Type: String
     Default: 3.9.0
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, ""]]
 
 Resources:
   kafkaVpc:
@@ -166,7 +173,7 @@ Resources:
       Roles:
         - !Ref kafkaIAMRole
 
-  
+# Need to change things in the user data script to use the correct broker_id, controller_quorum_voters, broker_ip, and cluster_id for each instance. This can be done by using CloudFormation's intrinsic functions to pass in the appropriate values for each instance.
   ec2Instance1:
     Type: AWS::EC2::Instance
     Properties:
