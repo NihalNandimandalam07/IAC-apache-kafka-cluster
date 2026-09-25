@@ -88,10 +88,6 @@ class CdkKafkaStack(Stack):
             for i, ip in enumerate(broker_ips)
         )
                 
-        bootstrap_servers = ",".join(
-            f"{ip}:9092" 
-            for ip in broker_ips
-        )
 
         security_group = aws_ec2.SecurityGroup(
             self,
