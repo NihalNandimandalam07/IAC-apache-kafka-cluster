@@ -34,7 +34,7 @@ resource "aws_instance" "kafka-broker" {
   vpc_security_group_ids = [aws_security_group.kafka-sg.id]
   private_ip   = local.broker_ips[count.index]
   iam_instance_profile = aws_iam_instance_profile.kafka_instance_profile.name
-  key_name    = "var.key_name"
+  key_name    = var.key_name
 
   depends_on = [
     aws_security_group.kafka-sg, 
