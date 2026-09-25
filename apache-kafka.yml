@@ -248,7 +248,7 @@ Resources:
               BrokerIP: "10.0.1.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: !Ref ClusterID
+              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
 
   
   ec2Instance2:
@@ -322,7 +322,7 @@ Resources:
               BrokerIP: "10.0.1.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: !Ref ClusterID
+              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
 
   ec2Instance3:
     Type: AWS::EC2::Instance
@@ -390,9 +390,9 @@ Resources:
                 EOF
 
                 systemctl enable --now kafka
-                
+
             - BrokerID: "2"
               BrokerIP: "10.0.2.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: !Ref ClusterID
+              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
