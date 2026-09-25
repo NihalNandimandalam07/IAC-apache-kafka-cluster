@@ -164,8 +164,8 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
-          managedPolicyArns:
-            - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
   
   kafkaInstanceProfile:
     Type: AWS::IAM::InstanceProfile
