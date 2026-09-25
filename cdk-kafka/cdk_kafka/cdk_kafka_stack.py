@@ -2,15 +2,20 @@ import aws_cdk as cdk
 from aws_cdk import (
     Stack,
     aws_ec2,
-    string
     aws_iam,
-    CfnParameter,
-    Aws,
     Fn,
+    Aws,
+    CfnParameter,
     CfnOutput,
     CfnCondition,
 )
 from constructs import Construct
+
+def cidr_host(cidr: str, host: int) -> str:
+    base = cidr.split("/")[0]
+    octets = base.split(".")
+    octets[3] = str(host)
+    return ".".join(octets)
 
 class CdkKafkaStack(Stack):
 
@@ -20,16 +25,31 @@ class CdkKafkaStack(Stack):
         effective_client_cidrs = CfnParameter(
             self,
             "effective_client_cidrs",
-            type = string,
-            default = "10.0.0.0/16"
+            type = "String",
+            default = "10.0.0.0/16",
         )
 
 
         instance_type = CfnParameter(
             self,
             "instance_type",
-            type = string,
-            default = "t3.medium"
+            type = "String",
+            default = "t3.medium",
+        )
+
+        kafka_version = CfnParameter(
+            self,
+            "Kafka_Version",
+            type = "String",
+            default = "3.9.0",
+        )
+
+        #cluster ID needs to be changed.
+        cluster_id = CfnParameter(
+            self,
+            "Cluster_ID",
+            type = "String",
+            default = "tjvTjIdHuW4iPQBdOIZSaP",
         )
 
         vpc = aws_ec2.Vpc(
@@ -41,45 +61,58 @@ class CdkKafkaStack(Stack):
                 aws_ec2.SubnetConfiguration(
                     name="subnet1",
                     cidr_mask=24,
-                    availability_zone="us-east-1a"
-                    subnet_type=aws_ec2.SubnetType.PUBLIC
+                    subnet_type=aws_ec2.SubnetType.PUBLIC,
                 ),
                 aws_ec2.SubnetConfiguration(
                     name="subnet2",
                     cidr_mask=24,
-                    availability_zone="us-east-1b"
-                    subnet_type=aws_ec2.SubnetType.PUBLIC
+                    subnet_type=aws_ec2.SubnetType.PUBLIC,
                 ),
                 aws_ec2.SubnetConfiguration(
                     name="subnet3",
                     cidr_mask=24,
-                    availability_zone="us-east-1c"
-                    subnet_type=aws_ec2.SubnetType.PUBLIC
+                    subnet_type=aws_ec2.SubnetType.PUBLIC,
                 )
             ]
+        )
+
+        subnets = vpc.public_subnets
+        
+        broker_ips = [
+            cidr_host(subnet.ipv4_cidr_block, 10) 
+            for subnet in subnets
+        ]
+        
+        controller_quorum_voters = ",".join(
+            f"{i}@{ip}:9093" 
+            for i, ip in enumerate(broker_ips)
+        )
+                
+        bootstrap_servers = ",".join(
+            f"{ip}:9092" 
+            for ip in broker_ips
         )
 
         security_group = aws_ec2.SecurityGroup(
             self,
             "kafka-security-group",
             vpc=vpc,
-            allow_all_outbound=True
+            allow_all_outbound=True,
         )
 
         security_group.add_ingress_rule(
-            security_group,
-            connection=aws_ec2.Port.tcp(9092)
+            peer=security_group,
+            connection=aws_ec2.Port.tcp(9092),
         )
 
         security_group.add_ingress_rule(
-            security_group,
-            connection=aws_ec2.Port.tcp(9093)
+            peer=security_group,
+            connection=aws_ec2.Port.tcp(9093),
         )
 
         security_group.add_ingress_rule(
-            security_group,
             peer=aws_ec2.Peer.ipv4(effective_client_cidrs.value_as_string),
-            connection=aws_ec2.Port.tcp(9092)
+            connection=aws_ec2.Port.tcp(9092),
         )
 
 
@@ -93,10 +126,6 @@ class CdkKafkaStack(Stack):
         )
 
 
-        subnets = vpc.public_subnets
-        broker_ips = [cidr_host(subnet.ipv4_cidr_block, 10) for subnet in subnets]
-        quorum_voters = ",".join(f"{i}@{ip}:9093" for i, ip in enumerate(broker_ips))
-        bootstrap_servers = ",".join(f"{ip}:9092" for ip in broker_ips)
 
 
         def broker_user_data(broker_id: int, broker_ip: str) -> str:
@@ -110,7 +139,7 @@ class CdkKafkaStack(Stack):
     mkdir -p /opt/kafka
     tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
     
-    # Data directory (uses root volume)
+    # Data directory
     mkdir -p /data/kafka-logs
     
     # KRaft config: this node is both broker and controller
@@ -148,25 +177,25 @@ class CdkKafkaStack(Stack):
     """    
 
     
-    brokers = []
+        brokers = []
 
-    for i, subnet in enumerate(subnets):
-        broker = aws_ec2.Instance(
-            self,
-            f"kafka-broker-{i}",
-            instance_type=aws_ec2.InstanceType(instance_type.value_as_string),
-            machine_image=aws_ec2.MachineImage.latest_amazon_linux(),
-            vpc=vpc,
-            vpc_subnets=aws_ec2.SubnetSelection(subnets=[subnet]),
-            security_group=security_group,
-            role=kafka_role,
-            private_ip_address=broker_ips[i],
-            block_devices=[
-                aws_ec2.BlockDevice(
-                    device_name="/dev/xvda",
-                    volume=aws_ec2.BlockDeviceVolume.ebs(root_volume_size.value_as_number, volume_type=aws_ec2.EbsDeviceVolumeType.GP3,
+        for i, subnet in enumerate(subnets):
+            broker = aws_ec2.Instance(
+                self,
+                f"kafka-broker-{i}",
+                instance_type=aws_ec2.InstanceType(instance_type.value_as_string),
+                machine_image=aws_ec2.MachineImage.latest_amazon_linux2(),
+                vpc=vpc,
+                vpc_subnets=aws_ec2.SubnetSelection(subnets=[subnet]),
+                security_group=security_group,
+                role=kafka_role,
+                private_ip_address=broker_ips[i],
+                block_devices=[
+                    aws_ec2.BlockDevice(
+                        device_name="/dev/xvda",
+                        volume=aws_ec2.BlockDeviceVolume.ebs(30, volume_type=aws_ec2.EbsDeviceVolumeType.GP3,
+                        ),
                     ),
-                ),
-            ],
-            user_data=aws_ec2.UserData.custom(broker_user_data(i, broker_ips[i]))
-        )
+                ],
+                user_data=aws_ec2.UserData.custom(broker_user_data(i, broker_ips[i]))
+            )
