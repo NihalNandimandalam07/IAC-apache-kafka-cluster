@@ -15,6 +15,7 @@ Parameters:
   
   ClusterID:
     Type: String
+    Default: "tjvTjIdHuW4iPQBdOIZSaP"
 
 Conditions:
   HasKeyName: !Not [!Equals [!Ref KeyName, ""]]
@@ -248,7 +249,7 @@ Resources:
               BrokerIP: "10.0.1.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
+              ClusterID: !Ref ClusterID
 
   
   ec2Instance2:
@@ -322,7 +323,7 @@ Resources:
               BrokerIP: "10.0.1.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
+              ClusterID: !Ref ClusterID
 
   ec2Instance3:
     Type: AWS::EC2::Instance
@@ -395,4 +396,4 @@ Resources:
               BrokerIP: "10.0.2.10"
               ControllerQuorumVoters: "0@10.0.0.10:9093,0@10.0.1.10:9093,0@10.0.2.10:9093"
               KafkaVersion: !Ref KafkaVersion
-              ClusterID: tjvTjIdHuW4iPQBdOIZSaP
+              ClusterID: !Ref ClusterID
