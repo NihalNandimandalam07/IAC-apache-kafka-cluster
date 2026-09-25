@@ -209,10 +209,10 @@ Resources:
           # KRaft config: this node is both broker and controller
           cat > /opt/kafka/config/kraft/server.properties <<EOF
           process.roles=broker,controller
-          node.id=${broker_id}
-          controller.quorum.voters=${controller_quorum_voters}
+          node.id=${BrokerID}
+          controller.quorum.voters=${ControllerQuorumVoters}
           listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-          advertised.listeners=PLAINTEXT://${broker_ip}:9092
+          advertised.listeners=PLAINTEXT://${BrokerIP}:9092
           controller.listener.names=CONTROLLER
           listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
           log.dirs=/data/kafka-logs
@@ -222,7 +222,7 @@ Resources:
           EOF
 
           # Format storage and start Kafka
-          /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+          /opt/kafka/bin/kafka-storage.sh format -t "${ClusterID}" -c /opt/kafka/config/kraft/server.properties
 
           cat > /etc/systemd/system/kafka.service <<EOF
           [Unit]
@@ -275,10 +275,10 @@ Resources:
           # KRaft config: this node is both broker and controller
           cat > /opt/kafka/config/kraft/server.properties <<EOF
           process.roles=broker,controller
-          node.id=${broker_id}
-          controller.quorum.voters=${controller_quorum_voters}
+          node.id=${BrokerID}
+          controller.quorum.voters=${ControllerQuorumVoters}
           listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-          advertised.listeners=PLAINTEXT://${broker_ip}:9092
+          advertised.listeners=PLAINTEXT://${BrokerIP}:9092
           controller.listener.names=CONTROLLER
           listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
           log.dirs=/data/kafka-logs
@@ -288,7 +288,7 @@ Resources:
           EOF
 
           # Format storage and start Kafka
-          /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+          /opt/kafka/bin/kafka-storage.sh format -t "${ClusterID}" -c /opt/kafka/config/kraft/server.properties
 
           cat > /etc/systemd/system/kafka.service <<EOF
           [Unit]
@@ -340,10 +340,10 @@ Resources:
           # KRaft config: this node is both broker and controller
           cat > /opt/kafka/config/kraft/server.properties <<EOF
           process.roles=broker,controller
-          node.id=${broker_id}
-          controller.quorum.voters=${controller_quorum_voters}
+          node.id=${BrokerID}
+          controller.quorum.voters=${ControllerQuorumVoters}
           listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-          advertised.listeners=PLAINTEXT://${broker_ip}:9092
+          advertised.listeners=PLAINTEXT://${BrokerIP}:9092
           controller.listener.names=CONTROLLER
           listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
           log.dirs=/data/kafka-logs
@@ -353,7 +353,7 @@ Resources:
           EOF
 
           # Format storage and start Kafka
-          /opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+          /opt/kafka/bin/kafka-storage.sh format -t "${ClusterID}" -c /opt/kafka/config/kraft/server.properties
 
           cat > /etc/systemd/system/kafka.service <<EOF
           [Unit]
