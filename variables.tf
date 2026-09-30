@@ -41,3 +41,8 @@ variable "client_access_cidrs" {
     type = list(string)
     default = []
 }
+
+variable "heap_size" {
+  type        = string
+  default     = "1g"
+}
