@@ -1,48 +1,48 @@
 variable "aws_region" {
-	type = string
-    default = "us-east-2"
+  type    = string
+  default = "us-east-2"
 }
 
 variable "vpc_cidr" {
-    type = string
-    default = "10.0.0.0/16"
+  type    = string
+  default = "10.0.0.0/16"
 }
 
 variable "availability_zones" {
-    type = list(string)
-    default = ["us-east-2a", "us-east-2b", "us-east-2c"]
+  type    = list(string)
+  default = ["us-east-2a", "us-east-2b", "us-east-2c"]
 }
 
 variable "broker_count" {
-    type = number
-    default = 3
+  type    = number
+  default = 3
 }
 variable "instance_type" {
-    type = string
-    default = "t3.medium"
+  type    = string
+  default = "t3.medium"
 }
 
 variable "key_name" {
-    type = string
-    default = null
+  type    = string
+  default = null
 }
 
 variable "root_volume_size" {
-    type = number
-    default = 30
-    }
+  type    = number
+  default = 30
+}
 
 variable "kafka_version" {
-    type = string
-    default = "3.9.0"
+  type    = string
+  default = "3.9.0"
 }
 
 variable "client_access_cidrs" {
-    type = list(string)
-    default = []
+  type    = list(string)
+  default = []
 }
 
 variable "heap_size" {
-  type        = string
-  default     = "1g"
+  type    = string
+  default = "1g"
 }

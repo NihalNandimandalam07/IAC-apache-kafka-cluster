@@ -3,23 +3,23 @@ locals {
 }
 
 resource "aws_security_group" "kafka-sg" {
-    name_prefix        = "kafka-"
-    vpc_id = aws_vpc.kafka-vpc.id
+  name_prefix = "kafka-"
+  vpc_id      = aws_vpc.kafka-vpc.id
 
-    depends_on = [aws_vpc.kafka-vpc]
+  depends_on = [aws_vpc.kafka-vpc]
 
   ingress {
-    from_port   = 9092
-    to_port     = 9092
-    protocol    = "tcp"
-    self = true
+    from_port = 9092
+    to_port   = 9092
+    protocol  = "tcp"
+    self      = true
   }
 
   ingress {
-    from_port   = 9093
-    to_port     = 9093
-    protocol    = "tcp"
-    self = true
+    from_port = 9093
+    to_port   = 9093
+    protocol  = "tcp"
+    self      = true
   }
 
   ingress {
@@ -38,7 +38,7 @@ resource "aws_security_group" "kafka-sg" {
 
   tags = {
     Name = "kafka-sg"
-  } 
-  
+  }
+
 }
 
