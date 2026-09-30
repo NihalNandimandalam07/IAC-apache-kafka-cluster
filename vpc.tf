@@ -7,6 +7,8 @@ locals {
 resource "aws_vpc" "kafka-vpc" {
   cidr_block       = var.vpc_cidr
   instance_tenancy = "default"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = {
     Name = "kafka-vpc"
@@ -28,6 +30,7 @@ resource "aws_subnet" "kafka-subnet" {
   vpc_id     = aws_vpc.kafka-vpc.id
   cidr_block = local.subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
+  map_public_ip_on_launch = true
 
   tags = {
     Name = "kafka-subnet-${count.index}"
