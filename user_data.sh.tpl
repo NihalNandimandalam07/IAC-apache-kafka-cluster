@@ -1,45 +1,83 @@
 #!/bin/bash
-set -e
+# Installs and starts a single-node Apache Kafka cluster in KRaft mode (broker + controller on one host).
+# Rendered by Terraform templatefile(); values are injected below.
+set -euxo pipefail
 
-dnf install -y java-17-amazon-corretto-headless wget tar
+KAFKA_VERSION="${kafka_version}"
+SCALA_VERSION="2.13"
+CLUSTER_ID="${cluster_id}"
+HEAP_SIZE="${heap_size}"
 
-# Install Kafka
-wget -q "https://downloads.apache.org/kafka/${kafka_version}/kafka_2.13-${kafka_version}.tgz" -O /tmp/kafka.tgz
-mkdir -p /opt/kafka
-tar -xzf /tmp/kafka.tgz -C /opt/kafka --strip-components=1
+KAFKA_DIST="kafka_$SCALA_VERSION-$KAFKA_VERSION"
 
-# Data directory (uses root volume)
-mkdir -p /data/kafka-logs
 
-# KRaft config: this node is both broker and controller
-cat > /opt/kafka/config/kraft/server.properties <<EOF
+IMDS_TOKEN=$(curl -fsS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+PRIVATE_IP=$(curl -fsS -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
+
+
+dnf install -y java-21-amazon-corretto-headless shadow-utils tar gzip
+
+id kafka >/dev/null 2>&1 || useradd --system --no-create-home --shell /sbin/nologin kafka
+
+
+curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://dlcdn.apache.org/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz" \
+  || curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://archive.apache.org/dist/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz"
+tar -xzf "/tmp/$KAFKA_DIST.tgz" -C /opt
+rm -f "/tmp/$KAFKA_DIST.tgz"
+ln -sfn "/opt/$KAFKA_DIST" /opt/kafka
+
+mkdir -p /etc/kafka /var/lib/kafka/data /var/log/kafka
+
+
+cat > /etc/kafka/server.properties <<EOF
 process.roles=broker,controller
-node.id=${broker_id}
-controller.quorum.voters=${controller_quorum_voters}
-listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-advertised.listeners=PLAINTEXT://${broker_ip}:9092
+node.id=1
+controller.quorum.voters=1@localhost:9093
+
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
+advertised.listeners=PLAINTEXT://$PRIVATE_IP:9092
+listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
 controller.listener.names=CONTROLLER
-listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-log.dirs=/data/kafka-logs
-default.replication.factor=3
-min.insync.replicas=2
-offsets.topic.replication.factor=3
+inter.broker.listener.name=PLAINTEXT
+
+log.dirs=/var/lib/kafka/data
+num.partitions=3
+default.replication.factor=1
+min.insync.replicas=1
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+auto.create.topics.enable=false
+log.retention.hours=168
 EOF
 
-# Format storage and start Kafka
-/opt/kafka/bin/kafka-storage.sh format -t "${cluster_id}" -c /opt/kafka/config/kraft/server.properties
+/opt/kafka/bin/kafka-storage.sh format --ignore-formatted \
+  --cluster-id "$CLUSTER_ID" \
+  --config /etc/kafka/server.properties
+
+chown -R kafka:kafka "/opt/$KAFKA_DIST" /etc/kafka /var/lib/kafka /var/log/kafka
 
 cat > /etc/systemd/system/kafka.service <<EOF
 [Unit]
-Description=Kafka
-After=network.target
+Description=Apache Kafka (KRaft)
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+Type=simple
+User=kafka
+Group=kafka
+Environment="KAFKA_HEAP_OPTS=-Xms$HEAP_SIZE -Xmx$HEAP_SIZE"
+Environment="LOG_DIR=/var/log/kafka"
+ExecStart=/opt/kafka/bin/kafka-server-start.sh /etc/kafka/server.properties
+ExecStop=/opt/kafka/bin/kafka-server-stop.sh
 Restart=on-failure
+RestartSec=10
+LimitNOFILE=100000
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+systemctl daemon-reload
 systemctl enable --now kafka
