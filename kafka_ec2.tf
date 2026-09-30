@@ -44,15 +44,22 @@ resource "aws_instance" "kafka-broker" {
   root_block_device {
     volume_size = var.root_volume_size
     volume_type = "gp3"
+    encrypted   = true
   }
 
   user_data = templatefile("${path.module}/user_data.sh.tpl", {
     broker_id = count.index
     broker_ip = local.broker_ips[count.index]
-    cluster_id = local.cluster_id
+    cluster_id    = random_id.kafka_cluster_id.b64_url
     controller_quorum_voters = local.controller_quorum_voters
     kafka_version = var.kafka_version
+    heap_size     = var.heap_size
   })
+  user_data_replace_on_change = true
+
+  metadata_options {
+    http_tokens = "required"
+  }
 
   tags = {
     Name = "kafka-broker-${count.index}"
