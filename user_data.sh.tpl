@@ -3,10 +3,17 @@
 # Rendered by Terraform templatefile(); values are injected below.
 set -euxo pipefail
 
+dnf install -y amazon-ssm-agent
+systemctl enable --now amazon-ssm-agent
+
 KAFKA_VERSION="${kafka_version}"
 SCALA_VERSION="2.13"
 CLUSTER_ID="${cluster_id}"
 HEAP_SIZE="${heap_size}"
+
+BROKER_ID="${broker_id}
+BROKER_IP="${broker_ip}
+CONTROLLER_QUORUM_VOTERS="${controller_quorum_voters}
 
 KAFKA_DIST="kafka_$SCALA_VERSION-$KAFKA_VERSION"
 
@@ -31,22 +38,27 @@ mkdir -p /etc/kafka /var/lib/kafka/data /var/log/kafka
 
 cat > /etc/kafka/server.properties <<EOF
 process.roles=broker,controller
-node.id=1
-controller.quorum.voters=1@localhost:9093
 
-listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
-advertised.listeners=PLAINTEXT://$PRIVATE_IP:9092
+node.id=$BROKER_ID
+controller.quorum.voters=$CONTROLLER_QUORUM_VOTERS
+
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+advertised.listeners=PLAINTEXT://$BROKER_IP:9092
+
 listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
 controller.listener.names=CONTROLLER
 inter.broker.listener.name=PLAINTEXT
 
 log.dirs=/var/lib/kafka/data
+
 num.partitions=3
-default.replication.factor=1
-min.insync.replicas=1
-offsets.topic.replication.factor=1
-transaction.state.log.replication.factor=1
-transaction.state.log.min.isr=1
+default.replication.factor=3
+min.insync.replicas=2
+
+offsets.topic.replication.factor=3
+transaction.state.log.replication.factor=3
+transaction.state.log.min.isr=2
+
 auto.create.topics.enable=false
 log.retention.hours=168
 EOF
