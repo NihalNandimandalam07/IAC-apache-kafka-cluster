@@ -52,7 +52,7 @@ listeners=SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://$PRIVATE_IP:9093
 advertised.listeners=SASL_PLAINTEXT://$PRIVATE_IP:9092
 listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
 controller.listener.names=CONTROLLER
-inter.broker.listener.name=PLAINTEXT
+inter.broker.listener.name=SASL_PLAINTEXT
 
 sasl.enabled.mechanisms=PLAIN
 sasl.mechanism.inter.broker.protocol=PLAIN
