@@ -38,7 +38,9 @@ resource "aws_instance" "kafka-broker" {
 
   depends_on = [
     aws_security_group.kafka-sg,
-    aws_subnet.kafka-subnet
+    aws_subnet.kafka-subnet,
+    aws_secretsmanager_secret.kafka_secret,
+    aws_secretsmanager_secret_version.kafka_secret_version
   ]
 
   root_block_device {
@@ -54,6 +56,7 @@ resource "aws_instance" "kafka-broker" {
     controller_quorum_voters = local.controller_quorum_voters
     kafka_version            = var.kafka_version
     heap_size                = var.heap_size
+    secrets_arn = aws_secretsmanager_secret.kafka_secret.arn
   })
   user_data_replace_on_change = true
 

@@ -11,6 +11,9 @@ SCALA_VERSION="2.13"
 CLUSTER_ID="${cluster_id}"
 HEAP_SIZE="${heap_size}"
 
+#added
+SECRETS_ARN="${secrets_arn}"
+
 KAFKA_DIST="kafka_$SCALA_VERSION-$KAFKA_VERSION"
 
 
@@ -18,10 +21,18 @@ IMDS_TOKEN=$(curl -fsS -X PUT http://169.254.169.254/latest/api/token -H "X-aws-
 PRIVATE_IP=$(curl -fsS -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
 
 
-dnf install -y java-21-amazon-corretto-headless shadow-utils tar gzip
+dnf install -y java-21-amazon-corretto-headless shadow-utils tar gzip awscli
 
 id kafka >/dev/null 2>&1 || useradd --system --no-create-home --shell /sbin/nologin kafka
 
+#added
+SECRETS_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRETS_ARN" --query 'SecretString' --output text)
+KAFKA_USERNAME=$(echo "$SECRETS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['username'])")
+KAFKA_PASSWORD=$(echo "$SECRETS_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['password'])")
+
+#added
+test -n "$KAFKA_USERNAME"
+test -n "$KAFKA_PASSWORD"
 
 curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://dlcdn.apache.org/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz" \
   || curl -fsSL --retry 5 -o "/tmp/$KAFKA_DIST.tgz" "https://archive.apache.org/dist/kafka/$KAFKA_VERSION/$KAFKA_DIST.tgz"
@@ -37,11 +48,16 @@ process.roles=broker,controller
 node.id=${broker_id}
 controller.quorum.voters=${controller_quorum_voters}
 
-listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://$PRIVATE_IP:9093
-advertised.listeners=PLAINTEXT://$PRIVATE_IP:9092
-listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+listeners=SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://$PRIVATE_IP:9093
+advertised.listeners=SASL_PLAINTEXT://$PRIVATE_IP:9092
+listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
 controller.listener.names=CONTROLLER
 inter.broker.listener.name=PLAINTEXT
+
+sasl.enabled.mechanisms=PLAIN
+sasl.mechanism.inter.broker.protocol=PLAIN
+
+listener.name.sasl_plaintext.plain.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="$KAFKA_USERNAME" password="$KAFKA_PASSWORD" user_$KAFKA_USERNAME="$KAFKA_PASSWORD";
 
 log.dirs=/var/lib/kafka/data
 num.partitions=3
@@ -53,6 +69,10 @@ transaction.state.log.min.isr=2
 auto.create.topics.enable=false
 log.retention.hours=168
 EOF
+
+#added
+chown kafka:kafka /etc/kafka/server.properties
+chmod 600 /etc/kafka/server.properties
 
 /opt/kafka/bin/kafka-storage.sh format --ignore-formatted \
   --cluster-id "$CLUSTER_ID" \
