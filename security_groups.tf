@@ -23,6 +23,13 @@ resource "aws_security_group" "kafka-sg" {
   }
 
   ingress {
+    from_port = 9094
+    to_port   = 9094
+    protocol  = "tcp"
+    self      = true
+  }
+
+  ingress {
     from_port   = 9092
     to_port     = 9092
     protocol    = "tcp"

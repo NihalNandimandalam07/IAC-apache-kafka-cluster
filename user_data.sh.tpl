@@ -48,14 +48,13 @@ process.roles=broker,controller
 node.id=${broker_id}
 controller.quorum.voters=${controller_quorum_voters}
 
-listeners=SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://$PRIVATE_IP:9093
-advertised.listeners=SASL_PLAINTEXT://$PRIVATE_IP:9092
-listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT
+listeners=SASL_PLAINTEXT://0.0.0.0:9092,CONTROLLER://$PRIVATE_IP:9093,INTERNAL://$PRIVATE_IP:9094
+advertised.listeners=SASL_PLAINTEXT://$PRIVATE_IP:9092,INTERNAL://$PRIVATE_IP:9094
+listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
 controller.listener.names=CONTROLLER
-inter.broker.listener.name=SASL_PLAINTEXT
+inter.broker.listener.name=INTERNAL
 
 sasl.enabled.mechanisms=PLAIN
-sasl.mechanism.inter.broker.protocol=PLAIN
 
 listener.name.sasl_plaintext.plain.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="$KAFKA_USERNAME" password="$KAFKA_PASSWORD" user_$KAFKA_USERNAME="$KAFKA_PASSWORD";
 
