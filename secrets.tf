@@ -4,9 +4,9 @@ resource "random_password" "kafka_password" {
 }
 
 resource "aws_secretsmanager_secret" "kafka_secret" {
-  name = "kafka_credentials"
+  name = "kafka_credentials_test"
   tags = {
-    Name = "kafka-credentials"
+    Name = "kafka-credentials_test"
   }
 }
 
