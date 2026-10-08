@@ -21,6 +21,9 @@ phases:
       - terraform validate
       - echo "Terraform Plan initiated"
       - terraform plan -out=tfplan
+      - echo "Terraform Plan completed"
+      - echo "Applying Terraform Plan"
+      - terraform apply -auto-approve tfplan
   
   post_build:
     commands:
