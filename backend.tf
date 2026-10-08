@@ -1,3 +1,4 @@
+#added backend configuration for remote state management in S3 bucket
 terraform {
   backend "s3" {
     bucket       = "kafka-terraform-state-backend-nn"
