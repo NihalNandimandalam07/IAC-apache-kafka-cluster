@@ -23,14 +23,20 @@ phases:
       - terraform validate
       - echo "Terraform Plan initiated"
       - terraform plan -out=tfplan
+      - terraform show -no-color tfplan > plan-review.txt
       - echo "Terraform Plan completed"
-      - echo "Applying Terraform Plan"
-      - terraform apply -auto-approve tfplan
   
   post_build:
     commands:
-      - echo "Applying Terraform Plan"
+      - echo "Terraform Plan completed successfully"
   
 artifacts:
   files:
-    - tfplan
+    - "**.*"
+    - ".terraform.lock.hcl"
+  exclude-paths:
+    - "terraform.zip"
+    - ".terraform/**/*"
+    - ".git/**/*"
+    - "*.tfstate"
+    - "*.tfstate.backup"
