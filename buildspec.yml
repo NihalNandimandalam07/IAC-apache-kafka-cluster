@@ -1,3 +1,5 @@
+
+#Triggering a pipeline
 version: 0.2
 
 phases:
