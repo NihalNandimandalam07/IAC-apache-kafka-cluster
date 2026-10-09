@@ -7,7 +7,7 @@ phases:
       - curl -fsSLo terraform.zip https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_amd64.zip
       - unzip -o terraform.zip
       - install terraform /usr/local/bin/terraform
-      - terraform version
+      - terraform --version
     
   pre_build:
     commands:
