@@ -1,5 +1,3 @@
-#IAM roles and policies for CodePipeline and CodeBuild
-
 #IAM Role for CodeBuild to assume and execute the buildspec.yml file
 resource "aws_iam_role" "codebuild_role" {
   name = "codebuild-apache-kafka-build-pipeline-service-role-nn"
